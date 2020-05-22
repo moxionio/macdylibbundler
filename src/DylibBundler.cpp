@@ -239,13 +239,13 @@ void bundleQtPlugins()
         std::string prefix = filePrefix(framework_root);
         std::string qt_prefix = filePrefix(prefix.substr(0, prefix.size()-1));
         std::string qt_plugins_prefix = qt_prefix + "plugins/";
-        if (fileExists(qt_plugins_prefix + plugin)) {
+        if (fileExists(qt_plugins_prefix + plugin) && !fileExists(dest + plugin)) {
             mkdir(dest + plugin);
             copyFile(qt_plugins_prefix + plugin, dest);
             std::vector<std::string> files = lsDir(dest + plugin+"/");
             for (const auto& file : files) {
                 Settings::addFileToFix(dest + plugin+"/"+file);
-                collectDependenciesRpaths(dest + plugin + "/" + file);
+                collectDependenciesRpaths(dest + plugin+"/"+file);
                 changeId(dest + plugin+"/"+file, "@rpath/" + plugin+"/"+file);
             }
         }
@@ -255,12 +255,15 @@ void bundleQtPlugins()
     std::string prefix = filePrefix(framework_root);
     std::string qt_prefix = filePrefix(prefix.substr(0, prefix.size()-1));
     std::string qt_plugins_prefix = qt_prefix + "plugins/";
-
     std::string dest = Settings::pluginsFolder();
-    mkdir(dest + "platforms");
-    copyFile(qt_plugins_prefix + "platforms/libqcocoa.dylib", dest + "platforms");
-    Settings::addFileToFix(dest + "platforms/libqcocoa.dylib");
-    collectDependenciesRpaths(dest + "platforms/libqcocoa.dylib");
+
+    if (!fileExists(dest + "platforms")) {
+        mkdir(dest + "platforms");
+        copyFile(qt_plugins_prefix + "platforms/libqcocoa.dylib", dest + "platforms");
+        Settings::addFileToFix(dest + "platforms/libqcocoa.dylib");
+        collectDependenciesRpaths(dest + "platforms/libqcocoa.dylib");
+        changeId(dest + "platforms/libqcocoa.dylib", "@rpath/platforms/libqcocoa.dylib");
+    }
 
     fixupPlugin("printsupport");
     fixupPlugin("styles");
