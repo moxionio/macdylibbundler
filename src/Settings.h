@@ -1,7 +1,32 @@
+/*
+The MIT License (MIT)
+
+Copyright (c) 2014 Marianne Gagnon
+Copyright (c) 2020 SCG82
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+ */
+
 #pragma once
 
-#ifndef DYLIBBUNDLER_SETTINGS_H
-#define DYLIBBUNDLER_SETTINGS_H
+#ifndef DYLIBBUNDLER_SETTINGS_H_
+#define DYLIBBUNDLER_SETTINGS_H_
 
 #include <string>
 #include <vector>
@@ -10,36 +35,39 @@
 #include <sys/types.h>
 #endif
 
+using std::string;
+using std::vector;
+
 namespace Settings {
 
-bool isPrefixBundled(const std::string& prefix);
-bool isPrefixIgnored(const std::string& prefix);
-void ignorePrefix(std::string prefix);
+bool isPrefixBundled(const string& prefix);
+bool isPrefixIgnored(const string& prefix);
+void ignorePrefix(string prefix);
 
-std::string appBundle();
-void appBundle(std::string path);
+string appBundle();
+void appBundle(string path);
 bool appBundleProvided();
 
-std::string destFolder();
-void destFolder(std::string path);
+string destFolder();
+void destFolder(string path);
 
-std::string insideLibPath();
-void insideLibPath(std::string p);
+string insideLibPath();
+void insideLibPath(string p);
 
-std::string executableFolder();
-std::string frameworksFolder();
-std::string pluginsFolder();
-std::string resourcesFolder();
+string executableFolder();
+string frameworksFolder();
+string pluginsFolder();
+string resourcesFolder();
 
-std::vector<std::string> filesToFix();
-void addFileToFix(std::string path);
+vector<string> filesToFix();
+void addFileToFix(string path);
 size_t filesToFixCount();
 
-std::vector<std::string> searchPaths();
-void addSearchPath(const std::string& path);
+vector<string> searchPaths();
+void addSearchPath(const string& path);
 
-std::vector<std::string> userSearchPaths();
-void addUserSearchPath(const std::string& path);
+vector<string> userSearchPaths();
+void addUserSearchPath(const string& path);
 
 bool canCreateDir();
 void canCreateDir(bool permission);
@@ -65,14 +93,14 @@ void verboseOutput(bool status);
 bool missingPrefixes();
 void missingPrefixes(bool status);
 
-std::string getFullPath(const std::string& rpath);
-void rpathToFullPath(const std::string& rpath, const std::string& fullpath);
-bool rpathFound(const std::string& rpath);
+string getFullPath(const string& rpath);
+void rpathToFullPath(const string& rpath, const string& fullpath);
+bool rpathFound(const string& rpath);
 
-std::vector<std::string> getRpathsForFile(const std::string& file);
-void addRpathForFile(const std::string& file, const std::string& rpath);
-bool fileHasRpath(const std::string& file);
+vector<string> getRpathsForFile(const string& file);
+void addRpathForFile(const string& file, const string& rpath);
+bool fileHasRpath(const string& file);
 
-} // namespace Settings
+}  // namespace Settings
 
-#endif
+#endif  // DYLIBBUNDLER_SETTINGS_H_

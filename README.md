@@ -43,7 +43,7 @@ Application bundle to make self-contained. Fixes the main executable of the app 
 Fixes given executable or plug-in file (ex: .dylib, .so). Anything on which `otool -L` works is accepted by `-x`. dylibbundler will walk through the dependencies of the specified file to build a dependency list. It will also fix the said files' dependencies so that it expects to find the libraries relative to itself (e.g. in the app bundle) instead of at an absolute path (e.g. /usr/local/lib). To pass multiple files to fix, simply specify multiple `-x` flags.
 </blockquote>
 
-<!-- 
+<!--
 `-b`, `--bundle-deps`
 <blockquote>
 Copies libaries to a local directory, fixes their internal name so that they are aware of their new location,

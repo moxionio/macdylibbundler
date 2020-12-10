@@ -2,8 +2,8 @@ DESTDIR=
 PREFIX=/usr/local
 CXX=clang++
 LD=$(shell xcrun -f clang++)
-CXXFLAGS=-c -pipe -stdlib=libc++ -O2 -std=c++17 -arch x86_64 -mmacosx-version-min=10.13
-LDFLAGS=-stdlib=libc++ -std=c++17 -Wl,-dead_strip -arch x86_64 -mmacosx-version-min=10.13
+CXXFLAGS=-c -pipe -stdlib=libc++ -O2 -std=c++17 -mmacosx-version-min=10.13
+LDFLAGS=-stdlib=libc++ -std=c++17 -Wl,-dead_strip -mmacosx-version-min=10.13
 LDLIBS=
 
 all: dylibbundler
