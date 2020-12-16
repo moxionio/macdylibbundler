@@ -189,11 +189,15 @@ void Dependency::CopyToBundle() const
 
     if (is_framework)
     {
-        string headers_path = dest_path + string("/Headers");
+        string headers_symlink = dest_path + string("/Headers");
+        string headers_path;
         char buffer[PATH_MAX];
-        if (realpath(rtrim(headers_path).c_str(), buffer))
+        if (realpath(rtrim(headers_symlink).c_str(), buffer))
+        {
             headers_path = buffer;
-        deleteFile(headers_path, true);
+            deleteFile(headers_path, true);
+        }
+        deleteFile(headers_symlink, true);
         deleteFile(dest_path + "/*.prl");
     }
 

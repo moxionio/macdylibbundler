@@ -66,8 +66,8 @@ void changeId(const string& binary_file, const string& new_id);
 void changeInstallName(const string& binary_file, const string& old_name, const string& new_name);
 
 void copyFile(const string& from, const string& to);
-void deleteFile(const string& path, bool overwrite);
-void deleteFile(const string& path);
+bool deleteFile(const string& path, bool overwrite);
+bool deleteFile(const string& path);
 bool mkdir(const string& path);
 
 void createDestDir();

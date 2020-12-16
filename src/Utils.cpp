@@ -223,21 +223,22 @@ void copyFile(const string& from, const string& to)
     }
 }
 
-void deleteFile(const string& path, bool overwrite)
+bool deleteFile(const string& path, bool overwrite)
 {
     string overwrite_permission = string(overwrite ? "-f \"" : " \"");
-    string command = string("rm -r ") + overwrite_permission + path +"\"";;
+    string command = string("rm -r ") + overwrite_permission + path +"\"";
     if (systemp(command) != 0)
     {
         cerr << "\n\nError: An error occured while trying to delete " << path << endl;
-        exit(1);
+        return false;
     }
+    return true;
 }
 
-void deleteFile(const string& path)
+bool deleteFile(const string& path)
 {
     bool overwrite = Settings::canOverwriteFiles();
-    deleteFile(path, overwrite);
+    return deleteFile(path, overwrite);
 }
 
 bool mkdir(const string& path)
@@ -264,8 +265,7 @@ void createDestDir()
     if (dest_exists && Settings::canOverwriteDir())
     {
         cout << "Erasing old output directory " << dest_folder << "\n";
-        string command = string("rm -r \"") + dest_folder + "\"";
-        if (systemp(command) != 0)
+        if (!deleteFile(dest_folder))
         {
             cerr << "\n\n/!\\ ERROR: An error occured while attempting to overwrite destination folder\n";
             exit(1);
