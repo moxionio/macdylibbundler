@@ -114,10 +114,10 @@ Dependency::Dependency(std::string path, std::string dependent_file)
         prefix = filePrefix(framework_root);
         filename = framework_name + "/" + framework_path;
     }
-
+    
     //check if the lib is in a known location
-    if ( !prefix.empty() && prefix[ prefix.size()-1 ] != '/' ) prefix += "/";
-    if ( prefix.empty() || !fileExists( prefix+filename ) )
+    if( !prefix.empty() && prefix[ prefix.size()-1 ] != '/' ) prefix += "/";
+    if( prefix.empty() || !fileExists( prefix+filename ) )
     {
         //the paths contains at least /usr/lib so if it is empty we have not initialized it
         size_t search_path_count = Settings::searchPathAmount();
@@ -151,17 +151,18 @@ Dependency::Dependency(std::string path, std::string dependent_file)
         Settings::missingPrefixes(true);
         Settings::addSearchPath( getUserInputDirForFile(filename, dependent_file) );
     }
-
+    
     new_name = filename;
 }
 
-void Dependency::print()
+void Dependency::print() const
 {
     std::cout << "\n* " << filename.c_str() << " from " << prefix.c_str() << std::endl;
     
-    const int symamount = symlinks.size();
-    for(int n=0; n<symamount; n++)
-        std::cout << "    symlink --> " << symlinks[n].c_str() << std::endl;
+    for (const auto& symlink : symlinks)
+    {
+        std::cout << "    symlink --> " << symlink << std::endl;
+    }
 }
 
 std::string Dependency::getInstallPath()

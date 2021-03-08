@@ -26,18 +26,17 @@ THE SOFTWARE.
 #ifndef _utils_h_
 #define _utils_h_
 
+#include <map>
 #include <string>
 #include <vector>
 
-class Library;
+std::string filePrefix(const std::string& in);
+std::string stripPrefix(const std::string& in);
 
-std::string filePrefix(std::string in);
-std::string stripPrefix(std::string in);
+std::string getFrameworkRoot(const std::string& in);
+std::string getFrameworkPath(const std::string& in);
 
-std::string getFrameworkRoot(std::string in);
-std::string getFrameworkPath(std::string in);
-
-std::string stripLSlash(std::string in);
+std::string stripLSlash(const std::string& in);
 
 // trim from end (in place)
 void rtrim_in_place(std::string& s);
@@ -45,12 +44,12 @@ void rtrim_in_place(std::string& s);
 std::string rtrim(std::string s);
 
 void tokenize(const std::string& str, const char* delimiters, std::vector<std::string>*);
-bool fileExists( std::string filename );
+bool fileExists(const std::string& filename);
 
-void copyFile(std::string from, std::string to);
+void copyFile(const std::string& from, const std::string& to);
 
-void deleteFile(std::string path, bool overwrite);
-void deleteFile(std::string path);
+bool deleteFile(const std::string& path, bool overwrite);
+bool deleteFile(const std::string& path);
 
 std::vector<std::string> lsDir(const std::string& path);
 bool mkdir(const std::string& path);
@@ -65,6 +64,14 @@ void changeId(const std::string& binary_file, const std::string& new_id);
 void changeInstallName(const std::string& binary_file, const std::string& old_name, const std::string& new_name);
 
 std::string getUserInputDirForFile(const std::string& filename, const std::string& dependent_file);
+
+void otool(const std::string& flags, const std::string& file, std::vector<std::string>& lines);
+void parseLoadCommands(const std::string& file,
+                       const std::map<std::string, std::string>& cmds_values,
+                       std::map<std::string, std::vector<std::string> >& cmds_results);
+
+std::string searchFilenameInRpaths(const std::string& rpath_file, const std::string& dependent_file);
+std::string searchFilenameInRpaths(const std::string& rpath_file);
 
 // check the same paths the system would search for dylibs
 void initSearchPaths();

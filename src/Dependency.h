@@ -43,13 +43,13 @@ class Dependency
 public:
     Dependency(std::string path, std::string dependent_file);
 
-    void print();
+    void print() const;
 
     std::string getOriginalFileName() const{ return filename; }
     std::string getOriginalPath() const{ return prefix+filename; }
     std::string getInstallPath();
     std::string getInnerPath();
-
+        
     bool isFramework(){ return is_framework; }
 
     void addSymlink(std::string s);

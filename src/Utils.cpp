@@ -24,48 +24,50 @@ THE SOFTWARE.
 
 
 #include "Utils.h"
-#include "Dependency.h"
 #include "Settings.h"
 #include <cstdlib>
-#include <unistd.h>
 #include <fstream>
 #include <iostream>
+#include <regex>
 #include <sstream>
 #include <cstdio>
 #include <stdio.h>
-#include <sys/stat.h>
+#include <sys/param.h>
+#ifndef __clang__
+#include <sys/types.h>
+#endif
 #include <unistd.h>
 using namespace std;
 
-string filePrefix(string in)
+string filePrefix(const string& in)
 {
     return in.substr(0, in.rfind("/")+1);
 }
 
-string stripPrefix(string in)
+string stripPrefix(const string& in)
 {
     return in.substr(in.rfind("/")+1);
 }
 
-string getFrameworkRoot(string in)
+string getFrameworkRoot(const string& in)
 {
     return in.substr(0, in.find(".framework")+10);
 }
 
-string getFrameworkPath(string in)
+string getFrameworkPath(const string& in)
 {
     return in.substr(in.rfind(".framework/")+11);
 }
 
-string stripLSlash(string in)
+string stripLSlash(const string& in)
 {
-    if (in[0] == '.' && in[1] == '/') in = in.substr(2, in.size());
+    if (in[0] == '.' && in[1] == '/') return in.substr(2, in.size());
     return in;
 }
 
 void rtrim_in_place(string& s)
 {
-    s.erase(find_if(s.rbegin(), s.rend(), [](unsigned char c){ return !isspace(c); }).base(), s.end());
+    s.erase(find_if(s.rbegin(), s.rend(), [](unsigned char c) { return !isspace(c); }).base(), s.end());
 }
 
 string rtrim(string s)
@@ -100,7 +102,7 @@ void tokenize(const string& str, const char* delim, vector<string>* vectorarg)
     
 }
 
-bool fileExists( std::string filename )
+bool fileExists( const std::string& filename )
 {
     if (access( filename.c_str(), F_OK ) != -1)
     {
@@ -124,7 +126,7 @@ bool fileExists( std::string filename )
     }
 }
 
-void copyFile(string from, string to)
+void copyFile(const string& from, const string& to)
 {
     bool override = Settings::canOverwriteFiles();
     if(!override)
@@ -155,21 +157,22 @@ void copyFile(string from, string to)
     }
 }
 
-void deleteFile(string path, bool overwrite)
+bool deleteFile(const string& path, bool overwrite)
 {
     string overwrite_permission = string(overwrite ? "-f " : "");
     string command = string("rm -r ") + overwrite_permission + "\"" + path + "\"";
     if( systemp( command ) != 0 )
     {
         cerr << "\n\nError: An error occured while trying to delete " << path << endl;
-        exit(1);
+        return false;
     }
+    return true;
 }
 
-void deleteFile(string path)
+bool deleteFile(const string& path)
 {
     bool overwrite = Settings::canOverwriteFiles();
-    deleteFile(path, overwrite);
+    return deleteFile(path, overwrite);
 }
 
 vector<string> lsDir(const string& path)
@@ -183,7 +186,8 @@ vector<string> lsDir(const string& path)
 
 bool mkdir(const string& path)
 {
-    cout << "Creating directory " << path << endl;
+    if (Settings::verboseOutput())
+        cout << "Creating directory " << path << endl;
     string command = string("mkdir -p \"") + path + "\"";
     if( systemp( command ) != 0 )
     {
@@ -270,13 +274,15 @@ std::string getUserInputDirForFile(const std::string& filename, const std::strin
         auto searchPath = Settings::searchPath(n);
         if( !searchPath.empty() && searchPath[ searchPath.size()-1 ] != '/' ) searchPath += "/";
 
-        if( !fileExists( searchPath+filename ) ) continue;
-
-        if( !Settings::quietOutput() )
+        if( fileExists( searchPath+filename ) )
         {
-            std::cerr << (searchPath+filename) << " was found. /!\\ DYLIBBUNDLER MAY NOT CORRECTLY HANDLE THIS DEPENDENCY: Manually check the executable with 'otool -L'" << std::endl;
+
+            if( !Settings::quietOutput() )
+            {
+                std::cerr << (searchPath+filename) << " was found. /!\\ DYLIBBUNDLER MAY NOT CORRECTLY HANDLE THIS DEPENDENCY: Manually check the executable with 'otool -L'" << std::endl;
+            }
+            return searchPath;
         }
-        return searchPath;
     }
 
     while (true)
@@ -309,14 +315,203 @@ std::string getUserInputDirForFile(const std::string& filename, const std::strin
     }
 }
 
-void createQtConf(std::string directory)
+void otool(const string& flags, const string& file, vector<string>& lines)
 {
-    std::string contents = "[Paths]\n"
-                           "Plugins = PlugIns\n"
-                           "Imports = Resources/qml\n"
-                           "Qml2Imports = Resources/qml\n";
+    string command = string("/usr/bin/otool ") + flags + " \"" + file + "\"";
+    string output = system_get_output(command);
+
+    if( output.find("can't open file") != string::npos
+        || output.find("No such file") != string::npos
+        || output.find("at least one file must be specified") != string::npos
+        || output.empty() )
+    {
+        cerr << "\n\n/!\\ ERROR: Cannot find file " << file << " to read its load commands\n";
+        exit(1);
+    }
+    tokenize(output, "\n", &lines);
+}
+
+void parseLoadCommands(const string& file, const map<string, string>& cmds_values, map<string, vector<string>>& cmds_results)
+{
+    vector<string> raw_lines;
+    otool("-l", file, raw_lines);
+
+    for (const auto& cmd_value : cmds_values)
+    {
+        vector<string> lines;
+        string cmd = cmd_value.first;
+        string value = cmd_value.second;
+        string cmd_line = string("cmd ") + cmd;
+        string value_line = string(value) + " ";
+        bool searching = false;
+        for (const auto& raw_line : raw_lines)
+        {
+            if(raw_line.find(cmd_line) != string::npos)
+            {
+                if(searching)
+                {
+                    cerr << "\n\n/!\\ ERROR: Failed to find " << value << " before next cmd\n";
+                    exit(1);
+                }
+                searching = true;
+            }
+            else if(searching)
+            {
+                size_t start_pos = raw_line.find(value_line);
+                if(start_pos == string::npos) continue;
+                size_t start = start_pos + value.size() + 1; // exclude data label "|value| "
+                size_t end = string::npos;
+                if(value == "name" || value == "path")
+                {
+                    size_t end_pos = raw_line.find(" (");
+                    if(end_pos == string::npos) continue;
+                    end = end_pos - start;
+                }
+                lines.push_back(raw_line.substr(start, end));
+                searching = false;
+            }
+        }
+        cmds_results[cmd] = lines;
+    }
+}
+
+string searchFilenameInRpaths(const string& rpath_file, const string& dependent_file)
+{
+    if (Settings::verboseOutput())
+    {
+        if (dependent_file != rpath_file) cout << "  dependent file: " << dependent_file << endl;
+        cout << "    dependency: " << rpath_file << endl;
+    }
+
+    string fullpath;
+    string suffix = rpath_file.substr(rpath_file.rfind('/')+1);
+    char fullpath_buffer[PATH_MAX];
+
+    const auto check_path = [&](string path)
+    {
+        char buffer[PATH_MAX];
+        string file_prefix = filePrefix(dependent_file);
+        if (path.find("@executable_path") != string::npos || path.find("@loader_path") != string::npos)
+        {
+            if (path.find("@executable_path") != string::npos)
+            {
+                if (Settings::appBundleProvided())
+                    path = regex_replace(path, regex("@executable_path/"), Settings::executableFolder());
+            }
+            if (dependent_file != rpath_file)
+            {
+                if (path.find("@loader_path") != string::npos)
+                    path = regex_replace(path, regex("@loader_path/"), file_prefix);
+            }
+            if (Settings::verboseOutput())
+                cout << "    path to search: " << path << endl;
+            if (realpath(path.c_str(), buffer))
+            {
+                fullpath = buffer;
+                Settings::rpathToFullPath(rpath_file, fullpath);
+                return true;
+            }
+        }
+        else if (path.find("@rpath") != string::npos)
+        {
+            if (Settings::appBundleProvided())
+            {
+                string pathE = regex_replace(path, regex("@rpath/"), Settings::executableFolder());
+                if (Settings::verboseOutput())
+                    cout << "    path to search: " << pathE << endl;
+                if (realpath(pathE.c_str(), buffer))
+                {
+                    fullpath = buffer;
+                    Settings::rpathToFullPath(rpath_file, fullpath);
+                    return true;
+                }
+            }
+            if (dependent_file != rpath_file)
+            {
+                string pathL = regex_replace(path, regex("@rpath/"), file_prefix);
+                if (Settings::verboseOutput())
+                    cout << "    path to search: " << pathL << endl;
+                if (realpath(pathL.c_str(), buffer))
+                {
+                    fullpath = buffer;
+                    Settings::rpathToFullPath(rpath_file, fullpath);
+                    return true;
+                }
+            }
+        }
+        return false;
+    };
+
+    // fullpath previously stored
+    if (Settings::rpathFound(rpath_file))
+    {
+        fullpath = Settings::getFullPath(rpath_file);
+    }
+    else if (!check_path(rpath_file))
+    {
+        auto rpaths_for_file = Settings::getRpathsForFile(dependent_file);
+        for (auto rpath : rpaths_for_file)
+        {
+            if (rpath[rpath.size()-1] != '/')
+                rpath += "/";
+            string path = rpath + suffix;
+            if (Settings::verboseOutput())
+                cout << "    trying rpath: " << path << endl;
+            if (check_path(path))
+                break;
+        }
+    }
+
+    if (fullpath.empty())
+    {
+        vector<string> search_paths = Settings::searchPaths();
+        for (const auto& search_path : search_paths)
+        {
+            if (fileExists(search_path+suffix))
+            {
+                if (Settings::verboseOutput())
+                    cout << "FOUND " << suffix << " in " << search_path << endl;
+                fullpath = search_path + suffix;
+                break;
+            }
+        }
+        if (fullpath.empty())
+        {
+            if (Settings::verboseOutput())
+                cout << "  ** rpath fullpath: not found" << endl;
+            if (!Settings::quietOutput())
+                cerr << "\n/!\\ WARNING: Can't get path for '" << rpath_file << "'\n";
+            fullpath = getUserInputDirForFile(suffix, dependent_file) + suffix;
+            if (Settings::quietOutput() && fullpath.empty())
+                cerr << "\n/!\\ WARNING: Can't get path for '" << rpath_file << "'\n";
+            if (realpath(fullpath.c_str(), fullpath_buffer))
+                fullpath = fullpath_buffer;
+        }
+        else if (Settings::verboseOutput())
+        {
+            cout << "  ** rpath fullpath: " << fullpath << endl;
+        }
+    }
+    else if (Settings::verboseOutput())
+    {
+        cout << "  ** rpath fullpath: " << fullpath << endl;
+    }
+    return fullpath;
+}
+
+string searchFilenameInRpaths(const string& rpath_file)
+{
+    return searchFilenameInRpaths(rpath_file, rpath_file);
+}
+
+void createQtConf(string directory)
+{
+    string contents = "[Paths]\n"
+                      "Plugins = PlugIns\n"
+                      "Imports = Resources/qml\n"
+                      "Qml2Imports = Resources/qml\n";
     if( directory[ directory.size()-1 ] != '/' ) directory += "/";
-    std::ofstream out(directory + "qt.conf");
+    ofstream out(directory + "qt.conf");
     out << contents;
     out.close();
 }
