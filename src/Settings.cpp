@@ -199,7 +199,7 @@ map<string, vector<string>> rpaths_per_file;
 vector<string> getRpathsForFile(const string& file) { return rpaths_per_file[file]; }
 void addRpathForFile(const string& file, const string& rpath) 
 {
-    if (std::find(rpaths_per_file[file].begin(), rpaths_per_file[file].end(), rpath) == rpaths_per_file[file].end()) return; 
+    if (std::find(rpaths_per_file[file].begin(), rpaths_per_file[file].end(), rpath) != rpaths_per_file[file].end()) return; 
     rpaths_per_file[file].push_back(rpath); 
 }
 bool fileHasRpath(const string& file) { return rpaths_per_file.find(file) != rpaths_per_file.end(); }
