@@ -414,7 +414,6 @@ string searchFilenameInRpaths(const string& rpath_file, const string& dependent_
     }
 
     string fullpath;
-    string suffix = rpath_file.substr(rpath_file.rfind('/')+1);
     char fullpath_buffer[PATH_MAX];
 
     const auto check_path = [&](string path)
@@ -471,6 +470,8 @@ string searchFilenameInRpaths(const string& rpath_file, const string& dependent_
         }
         return false;
     };
+
+    string suffix = regex_replace(rpath_file, regex("^@[a-z_]+path/"), "");
 
     // fullpath previously stored
     if (Settings::rpathFound(rpath_file))
