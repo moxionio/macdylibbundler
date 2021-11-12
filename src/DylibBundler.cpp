@@ -230,6 +230,7 @@ void bundleDependencies()
             dep.CopyToBundle();
             changeLibPathsOnFile(dep.InstallPath());
             fixRpathsOnFile(dep.OriginalPath(), dep.InstallPath());
+            adhocCodeSign(dep.InstallPath());
         }
     }
     // fix up selected files
@@ -238,7 +239,11 @@ void bundleDependencies()
     {
         changeLibPathsOnFile(file);
         fixRpathsOnFile(file, file);
+        adhocCodeSign(file);
     }
+
+    if (Settings::appBundleProvided())
+        adhocCodeSign(Settings::appBundle());
 }
 
 void bundleQtPlugins()

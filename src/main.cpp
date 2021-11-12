@@ -38,7 +38,7 @@ THE SOFTWARE.
 
 using namespace std;
 
-const string VERSION = "2.1.1 (2020-12-10)";
+const string VERSION = "2.2.1 (2021-11-12)";
 
 void showHelp()
 {
