@@ -110,7 +110,7 @@ string systemOutput(const string& cmd)
     }
     catch (...)
     {
-        cerr << "An error occured while executing command " << cmd << endl;
+        cerr << "An error occurred while executing command " << cmd << endl;
         pclose(command_output);
         return "";
     }
@@ -181,7 +181,7 @@ void changeId(const string& binary_file, const string& new_id)
     string command = string("install_name_tool -id \"") + new_id + "\" \"" + binary_file + "\"";
     if (systemp(command) != 0)
     {
-        cerr << "\n\nError: An error occured while trying to change identity of library " << binary_file << endl;
+        cerr << "\n\nError: An error occurred while trying to change identity of library " << binary_file << endl;
         exit(1);
     }
 }
@@ -191,7 +191,7 @@ void changeInstallName(const string& binary_file, const string& old_name, const 
     string command = string("install_name_tool -change \"") + old_name + "\" \"" + new_name + "\" \"" + binary_file + "\"";
     if (systemp(command) != 0)
     {
-        cerr << "\n\nError: An error occured while trying to fix dependencies of " << binary_file << endl;
+        cerr << "\n\nError: An error occurred while trying to fix dependencies of " << binary_file << endl;
         exit(1);
     }
 }
@@ -210,7 +210,7 @@ void copyFile(const string& from, const string& to)
     string command = string("cp -R ") + overwrite_permission + from + string(" \"") + to + "\"";
     if (from != to && systemp(command) != 0)
     {
-        cerr << "\n\nError: An error occured while trying to copy file " << from << " to " << to << endl;
+        cerr << "\n\nError: An error occurred while trying to copy file " << from << " to " << to << endl;
         exit(1);
     }
 
@@ -218,7 +218,7 @@ void copyFile(const string& from, const string& to)
     string command2 = string("chmod -R +w \"") + to + "\"";
     if (systemp(command2) != 0)
     {
-        cerr << "\n\nError: An error occured while trying to set write permissions on file " << to << endl;
+        cerr << "\n\nError: An error occurred while trying to set write permissions on file " << to << endl;
         exit(1);
     }
 }
@@ -229,7 +229,7 @@ bool deleteFile(const string& path, bool overwrite)
     string command = string("rm -r ") + overwrite_permission + path +"\"";
     if (systemp(command) != 0)
     {
-        cerr << "\n\nError: An error occured while trying to delete " << path << endl;
+        cerr << "\n\nError: An error occurred while trying to delete " << path << endl;
         return false;
     }
     return true;
@@ -248,7 +248,7 @@ bool mkdir(const string& path)
     string command = string("mkdir -p \"") + path + "\"";
     if (systemp(command) != 0)
     {
-        cerr << "\n/!\\ ERROR: An error occured while creating " << path << endl;
+        cerr << "\n/!\\ ERROR: An error occurred while creating " << path << endl;
         return false;
     }
     return true;
@@ -267,7 +267,7 @@ void createDestDir()
         cout << "Erasing old output directory " << dest_folder << "\n";
         if (!deleteFile(dest_folder))
         {
-            cerr << "\n\n/!\\ ERROR: An error occured while attempting to overwrite destination folder\n";
+            cerr << "\n\n/!\\ ERROR: An error occurred while attempting to overwrite destination folder\n";
             exit(1);
         }
         dest_exists = false;
@@ -280,7 +280,7 @@ void createDestDir()
             cout << "Creating output directory " << dest_folder << "\n\n";
             if (!mkdir(dest_folder))
             {
-                cerr << "\n/!\\ ERROR: An error occured while creating " << dest_folder << endl;
+                cerr << "\n/!\\ ERROR: An error occurred while creating " << dest_folder << endl;
                 exit(1);
             }
         }
@@ -289,6 +289,49 @@ void createDestDir()
             cerr << "\n\n/!\\ ERROR: Destination folder does not exist. Create it or pass the '-cd' or '-od' flag\n";
             exit(1);
         }
+    }
+}
+
+void adhocCodeSign(const string& file)
+{
+    // Add ad-hoc signature for ARM (Apple Silicon) binaries
+    string signCommand = string("codesign --force --deep --preserve-metadata=entitlements,requirements,flags,runtime --sign - \"") + file + "\"";
+    if (systemp(signCommand) != 0)
+    {
+        // If the codesigning fails, it may be a bug in Apple's codesign utility.
+        // A known workaround is to copy the file to another inode, then move it back
+        // erasing the previous file. Then sign again.
+        cerr << "  * Error: An error occurred while applying ad-hoc signature to " << file << ". Attempting workaround" << endl;
+
+        string machine = systemOutput("machine");
+        bool isArm = machine.find("arm") != string::npos;
+        string tempDirTemplate = string(getenv("TMPDIR")) + "dylibbundler.XXXXXXXX";
+        string filename = stripPrefix(file);
+        char* tmpDirCstr = mkdtemp((char*)(tempDirTemplate.c_str()));
+        if (tmpDirCstr == nullptr)
+        {
+            cerr << "  * Error: Unable to create temp directory for signing workaround" << endl;
+            if (isArm)
+                exit(1);
+        }
+        string tmpDir = string(tmpDirCstr);
+        string tmpFile = tmpDir+"/"+filename;
+        const auto runCommand = [isArm](const string& command, const string& errMsg)
+        {
+            if (systemp(command) != 0)
+            {
+                cerr << errMsg << endl;
+                if (isArm)
+                    exit(1);
+            }
+        };
+        string command = string("cp -p \"") + file + "\" \"" + tmpFile + "\"";
+        runCommand(command, "  * Error: An error occurred copying " + file + " to " + tmpDir);
+        command = string("mv -f \"") + tmpFile + "\" \"" + file + "\"";
+        runCommand(command, "  * Error: An error occurred moving " + tmpFile + " to " + file);
+        command = string("rm -rf \"") + tmpDir + "\"";
+        systemp(command);
+        runCommand(signCommand, "  * Error: An error occurred while applying ad-hoc signature to " + file);
     }
 }
 

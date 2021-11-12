@@ -137,10 +137,9 @@ void collectSubDependencies()
         cout << "(pre sub) # OF DEPS: " << deps.size() << endl;
     }
 
-    size_t deps_size = deps.size();
     while (true)
     {
-        deps_size = deps.size();
+        size_t deps_size = deps.size();
         for (size_t n=0; n<deps_size; ++n)
         {
             string original_path = deps[n].OriginalPath();
@@ -230,6 +229,7 @@ void bundleDependencies()
             dep.CopyToBundle();
             changeLibPathsOnFile(dep.InstallPath());
             fixRpathsOnFile(dep.OriginalPath(), dep.InstallPath());
+            adhocCodeSign(dep.InstallPath());
         }
     }
     // fix up selected files
@@ -238,7 +238,11 @@ void bundleDependencies()
     {
         changeLibPathsOnFile(file);
         fixRpathsOnFile(file, file);
+        adhocCodeSign(file);
     }
+
+    if (Settings::appBundleProvided())
+        adhocCodeSign(Settings::appBundle());
 }
 
 void bundleQtPlugins()

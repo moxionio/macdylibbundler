@@ -71,6 +71,7 @@ bool deleteFile(const string& path);
 bool mkdir(const string& path);
 
 void createDestDir();
+void adhocCodeSign(const string& file);
 
 string getUserInputDirForFile(const string& filename, const string& dependent_file);
 
